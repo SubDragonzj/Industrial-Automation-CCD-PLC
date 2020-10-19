@@ -10,3 +10,11 @@
 5.链接器-常规-附加库目录：$(HALCONROOT)\lib\$(HALCONARCH);
 
 6.[链接器]->[输入]->[附加依赖项]添加：halconcpp.lib
+
+
+### VS2015建立一个基于对话框的MFC程序。
+
+![](https://github.com/SubDragonzj/Industrial-Automation-CCD-PLC/blob/main/vs2015/images/window1.PNG)
+
+一个picture control用于显示图像，两个button control，四个text control用于显示测量数据。
+项目代码位于HalconCamera
