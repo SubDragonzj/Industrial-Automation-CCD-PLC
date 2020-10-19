@@ -1,0 +1,6 @@
+open_framegrabber函数是打开相机的参数。
+
+接着下面是摄像机位姿，测量划线等等。
+
+从while (true)开始，是核心交互测量。
+我测量了四个距离：Distance_World_Measure_01_0，Distance_World_Measure_01_1，Distance_World_Measure_01_2，Distance_World_Measure_01_3
