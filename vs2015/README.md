@@ -18,3 +18,5 @@
 
 一个picture control用于显示图像，两个button control，四个text control用于显示测量数据。
 项目代码位于HalconCamera
+
+##### 注：要将halcon.dll和halconcpp.dll拷贝到VS程序运行目录。(这两个文件在halcon安装目录)
