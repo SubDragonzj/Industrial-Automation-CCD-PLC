@@ -181,6 +181,37 @@ void CcameraDlg::OnBnClickedButton1()
 
 void ThreadFunc(LPVOID lpParam)
 {
+	//声明halcon的变量
+	HObject ho_Image;
+	HTuple  hv_AcqHandle, hv_CameraParameters, hv_CameraPose;
+	HTuple  hv_AmplitudeThreshold, hv_RoiWidthLen2, hv_LineRowStart_Measure_01_0;
+	HTuple  hv_LineColumnStart_Measure_01_0, hv_LineRowEnd_Measure_01_0;
+	HTuple  hv_LineColumnEnd_Measure_01_0, hv_TmpCtrl_Row, hv_TmpCtrl_Column;
+	HTuple  hv_TmpCtrl_Dr, hv_TmpCtrl_Dc, hv_TmpCtrl_Phi, hv_TmpCtrl_Len1;
+	HTuple  hv_TmpCtrl_Len2, hv_MsrHandle_Measure_01_0, hv_LineRowStart_Measure_01_1;
+	HTuple  hv_LineColumnStart_Measure_01_1, hv_LineRowEnd_Measure_01_1;
+	HTuple  hv_LineColumnEnd_Measure_01_1, hv_MsrHandle_Measure_01_1;
+	HTuple  hv_LineRowStart_Measure_01_2, hv_LineColumnStart_Measure_01_2;
+	HTuple  hv_LineRowEnd_Measure_01_2, hv_LineColumnEnd_Measure_01_2;
+	HTuple  hv_MsrHandle_Measure_01_2, hv_LineRowStart_Measure_01_3;
+	HTuple  hv_LineColumnStart_Measure_01_3, hv_LineRowEnd_Measure_01_3;
+	HTuple  hv_LineColumnEnd_Measure_01_3, hv_MsrHandle_Measure_01_3;
+	HTuple  hv_Row_Measure_01_0, hv_Column_Measure_01_0, hv_Amplitude_Measure_01_0;
+	HTuple  hv_Distance_Measure_01_0, hv_Row_Measure_01_1, hv_Column_Measure_01_1;
+	HTuple  hv_Amplitude_Measure_01_1, hv_Distance_Measure_01_1;
+	HTuple  hv_Row_Measure_01_2, hv_Column_Measure_01_2, hv_Amplitude_Measure_01_2;
+	HTuple  hv_Distance_Measure_01_2, hv_Row_Measure_01_3, hv_Column_Measure_01_3;
+	HTuple  hv_Amplitude_Measure_01_3, hv_Distance_Measure_01_3;
+	HTuple  hv_Column_World_Measure_01_0, hv_Row_World_Measure_01_0;
+	HTuple  hv_TmpCtrl_Length, hv_TmpCtrl_RowFrom, hv_TmpCtrl_ColumnFrom;
+	HTuple  hv_TmpCtrl_RowTo, hv_TmpCtrl_ColumnTo, hv_Distance_World_Measure_01_0;
+	HTuple  hv_Column_World_Measure_01_1, hv_Row_World_Measure_01_1;
+	HTuple  hv_Distance_World_Measure_01_1, hv_Column_World_Measure_01_2;
+	HTuple  hv_Row_World_Measure_01_2, hv_Distance_World_Measure_01_2;
+	HTuple  hv_Column_World_Measure_01_3, hv_Row_World_Measure_01_3;
+	HTuple  hv_Distance_World_Measure_01_3;
+
+
 	//指针转换
 	CcameraDlg * pMainWindow;
 	pMainWindow = (CcameraDlg *)lpParam; //强制转化为主窗口指针
@@ -197,6 +228,100 @@ void ThreadFunc(LPVOID lpParam)
 	OpenFramegrabber("GigEVision2", 0, 0, 0, 0, 0, 0, "progressive", -1, "default",
 		-1, "false", "default", "d47c443017eb_OMRONSENTECH_STCMBA503POE", 0, -1, &(pMainWindow->hv_AcqHandle));
 
+
+	//Measure 01: Initialize calibration
+	hv_CameraParameters.Clear();
+	hv_CameraParameters[0] = "area_scan_division";
+	hv_CameraParameters[1] = 1.37727;
+	hv_CameraParameters[2] = 31.7944;
+	hv_CameraParameters[3] = 2.1972e-006;
+	hv_CameraParameters[4] = 2.2e-006;
+	hv_CameraParameters[5] = 361.524;
+	hv_CameraParameters[6] = -499.362;
+	hv_CameraParameters[7] = 2592;
+	hv_CameraParameters[8] = 1944;
+	hv_CameraPose.Clear();
+	hv_CameraPose[0] = 0.00989773;
+	hv_CameraPose[1] = 0.0163173;
+	hv_CameraPose[2] = 6.86213;
+	hv_CameraPose[3] = 358.601;
+	hv_CameraPose[4] = 3.04897;
+	hv_CameraPose[5] = 359.151;
+	hv_CameraPose[6] = 0;
+	//Measure 01: Prepare measurement
+	hv_AmplitudeThreshold = 40;
+	hv_RoiWidthLen2 = 5;
+	SetSystem("int_zooming", "true");
+	//Measure 01: Coordinates for line Measure 01 [0]
+	hv_LineRowStart_Measure_01_0 = 283.283;
+	hv_LineColumnStart_Measure_01_0 = 918.513;
+	hv_LineRowEnd_Measure_01_0 = 500.794;
+	hv_LineColumnEnd_Measure_01_0 = 1144.36;
+	//Measure 01: Convert coordinates to rectangle2 type
+	hv_TmpCtrl_Row = 0.5*(hv_LineRowStart_Measure_01_0 + hv_LineRowEnd_Measure_01_0);
+	hv_TmpCtrl_Column = 0.5*(hv_LineColumnStart_Measure_01_0 + hv_LineColumnEnd_Measure_01_0);
+	hv_TmpCtrl_Dr = hv_LineRowStart_Measure_01_0 - hv_LineRowEnd_Measure_01_0;
+	hv_TmpCtrl_Dc = hv_LineColumnEnd_Measure_01_0 - hv_LineColumnStart_Measure_01_0;
+	hv_TmpCtrl_Phi = hv_TmpCtrl_Dr.TupleAtan2(hv_TmpCtrl_Dc);
+	hv_TmpCtrl_Len1 = 0.5*(((hv_TmpCtrl_Dr*hv_TmpCtrl_Dr) + (hv_TmpCtrl_Dc*hv_TmpCtrl_Dc)).TupleSqrt());
+	hv_TmpCtrl_Len2 = hv_RoiWidthLen2;
+	//Measure 01: Create measure for line Measure 01 [0]
+	//Measure 01: Attention: This assumes all images have the same size!
+	GenMeasureRectangle2(hv_TmpCtrl_Row, hv_TmpCtrl_Column, hv_TmpCtrl_Phi, hv_TmpCtrl_Len1,
+		hv_TmpCtrl_Len2, 2592, 1944, "nearest_neighbor", &hv_MsrHandle_Measure_01_0);
+	//Measure 01: Coordinates for line Measure 01 [1]
+	hv_LineRowStart_Measure_01_1 = 279.885;
+	hv_LineColumnStart_Measure_01_1 = 2002.57;
+	hv_LineRowEnd_Measure_01_1 = 283.283;
+	hv_LineColumnEnd_Measure_01_1 = 2478.58;
+	//Measure 01: Convert coordinates to rectangle2 type
+	hv_TmpCtrl_Row = 0.5*(hv_LineRowStart_Measure_01_1 + hv_LineRowEnd_Measure_01_1);
+	hv_TmpCtrl_Column = 0.5*(hv_LineColumnStart_Measure_01_1 + hv_LineColumnEnd_Measure_01_1);
+	hv_TmpCtrl_Dr = hv_LineRowStart_Measure_01_1 - hv_LineRowEnd_Measure_01_1;
+	hv_TmpCtrl_Dc = hv_LineColumnEnd_Measure_01_1 - hv_LineColumnStart_Measure_01_1;
+	hv_TmpCtrl_Phi = hv_TmpCtrl_Dr.TupleAtan2(hv_TmpCtrl_Dc);
+	hv_TmpCtrl_Len1 = 0.5*(((hv_TmpCtrl_Dr*hv_TmpCtrl_Dr) + (hv_TmpCtrl_Dc*hv_TmpCtrl_Dc)).TupleSqrt());
+	hv_TmpCtrl_Len2 = hv_RoiWidthLen2;
+	//Measure 01: Create measure for line Measure 01 [1]
+	//Measure 01: Attention: This assumes all images have the same size!
+	GenMeasureRectangle2(hv_TmpCtrl_Row, hv_TmpCtrl_Column, hv_TmpCtrl_Phi, hv_TmpCtrl_Len1,
+		hv_TmpCtrl_Len2, 2592, 1944, "nearest_neighbor", &hv_MsrHandle_Measure_01_1);
+	//Measure 01: Coordinates for line Measure 01 [2]
+	hv_LineRowStart_Measure_01_2 = 1374.23;
+	hv_LineColumnStart_Measure_01_2 = 939.361;
+	hv_LineRowEnd_Measure_01_2 = 1567.95;
+	hv_LineColumnEnd_Measure_01_2 = 1120.04;
+	//Measure 01: Convert coordinates to rectangle2 type
+	hv_TmpCtrl_Row = 0.5*(hv_LineRowStart_Measure_01_2 + hv_LineRowEnd_Measure_01_2);
+	hv_TmpCtrl_Column = 0.5*(hv_LineColumnStart_Measure_01_2 + hv_LineColumnEnd_Measure_01_2);
+	hv_TmpCtrl_Dr = hv_LineRowStart_Measure_01_2 - hv_LineRowEnd_Measure_01_2;
+	hv_TmpCtrl_Dc = hv_LineColumnEnd_Measure_01_2 - hv_LineColumnStart_Measure_01_2;
+	hv_TmpCtrl_Phi = hv_TmpCtrl_Dr.TupleAtan2(hv_TmpCtrl_Dc);
+	hv_TmpCtrl_Len1 = 0.5*(((hv_TmpCtrl_Dr*hv_TmpCtrl_Dr) + (hv_TmpCtrl_Dc*hv_TmpCtrl_Dc)).TupleSqrt());
+	hv_TmpCtrl_Len2 = hv_RoiWidthLen2;
+	//Measure 01: Create measure for line Measure 01 [2]
+	//Measure 01: Attention: This assumes all images have the same size!
+	GenMeasureRectangle2(hv_TmpCtrl_Row, hv_TmpCtrl_Column, hv_TmpCtrl_Phi, hv_TmpCtrl_Len1,
+		hv_TmpCtrl_Len2, 2592, 1944, "nearest_neighbor", &hv_MsrHandle_Measure_01_2);
+	//Measure 01: Coordinates for line Measure 01 [3]
+	hv_LineRowStart_Measure_01_3 = 1476.19;
+	hv_LineColumnStart_Measure_01_3 = 1304.19;
+	hv_LineRowEnd_Measure_01_3 = 1771.87;
+	hv_LineColumnEnd_Measure_01_3 = 1314.61;
+	//Measure 01: Convert coordinates to rectangle2 type
+	hv_TmpCtrl_Row = 0.5*(hv_LineRowStart_Measure_01_3 + hv_LineRowEnd_Measure_01_3);
+	hv_TmpCtrl_Column = 0.5*(hv_LineColumnStart_Measure_01_3 + hv_LineColumnEnd_Measure_01_3);
+	hv_TmpCtrl_Dr = hv_LineRowStart_Measure_01_3 - hv_LineRowEnd_Measure_01_3;
+	hv_TmpCtrl_Dc = hv_LineColumnEnd_Measure_01_3 - hv_LineColumnStart_Measure_01_3;
+	hv_TmpCtrl_Phi = hv_TmpCtrl_Dr.TupleAtan2(hv_TmpCtrl_Dc);
+	hv_TmpCtrl_Len1 = 0.5*(((hv_TmpCtrl_Dr*hv_TmpCtrl_Dr) + (hv_TmpCtrl_Dc*hv_TmpCtrl_Dc)).TupleSqrt());
+	hv_TmpCtrl_Len2 = hv_RoiWidthLen2;
+	//Measure 01: Create measure for line Measure 01 [3]
+	//Measure 01: Attention: This assumes all images have the same size!
+	GenMeasureRectangle2(hv_TmpCtrl_Row, hv_TmpCtrl_Column, hv_TmpCtrl_Phi, hv_TmpCtrl_Len1,
+		hv_TmpCtrl_Len2, 2592, 1944, "nearest_neighbor", &hv_MsrHandle_Measure_01_3);
+
+
 	GrabImageStart(pMainWindow->hv_AcqHandle, -1);
 	ClearWindow(pMainWindow->m_HWindowID);
 	GrabImage(&(pMainWindow->ho_Image), pMainWindow->hv_AcqHandle);
@@ -211,6 +336,96 @@ void ThreadFunc(LPVOID lpParam)
 		{
 			GrabImageAsync(&(pMainWindow->ho_Image), pMainWindow->hv_AcqHandle, -1);
 			DispObj(pMainWindow->ho_Image, pMainWindow->m_HWindowID);
+
+
+			//Measure 01: Execute measurements
+			MeasurePos(pMainWindow->ho_Image, hv_MsrHandle_Measure_01_0, 1, hv_AmplitudeThreshold, "all",
+				"all", &hv_Row_Measure_01_0, &hv_Column_Measure_01_0, &hv_Amplitude_Measure_01_0,
+				&hv_Distance_Measure_01_0);
+			MeasurePos(pMainWindow->ho_Image, hv_MsrHandle_Measure_01_1, 1, hv_AmplitudeThreshold, "all",
+				"all", &hv_Row_Measure_01_1, &hv_Column_Measure_01_1, &hv_Amplitude_Measure_01_1,
+				&hv_Distance_Measure_01_1);
+			MeasurePos(pMainWindow->ho_Image, hv_MsrHandle_Measure_01_2, 1, hv_AmplitudeThreshold, "all",
+				"all", &hv_Row_Measure_01_2, &hv_Column_Measure_01_2, &hv_Amplitude_Measure_01_2,
+				&hv_Distance_Measure_01_2);
+			MeasurePos(pMainWindow->ho_Image, hv_MsrHandle_Measure_01_3, 1, hv_AmplitudeThreshold, "all",
+				"all", &hv_Row_Measure_01_3, &hv_Column_Measure_01_3, &hv_Amplitude_Measure_01_3,
+				&hv_Distance_Measure_01_3);
+			//Measure 01: Transform to world coordinates
+			//Measure 01: Calibrate positions for Measure 01 [0]
+			ImagePointsToWorldPlane(hv_CameraParameters, hv_CameraPose, hv_Row_Measure_01_0,
+				hv_Column_Measure_01_0, 0.001, &hv_Column_World_Measure_01_0, &hv_Row_World_Measure_01_0);
+			//Measure 01: Calibrate distances
+			hv_TmpCtrl_Length = hv_Row_World_Measure_01_0.TupleLength();
+			if (0 != (hv_TmpCtrl_Length>0))
+			{
+				TupleSelectRange(hv_Row_World_Measure_01_0, 0, hv_TmpCtrl_Length - 2, &hv_TmpCtrl_RowFrom);
+				TupleSelectRange(hv_Column_World_Measure_01_0, 0, hv_TmpCtrl_Length - 2, &hv_TmpCtrl_ColumnFrom);
+				TupleSelectRange(hv_Row_World_Measure_01_0, 1, hv_TmpCtrl_Length - 1, &hv_TmpCtrl_RowTo);
+				TupleSelectRange(hv_Column_World_Measure_01_0, 1, hv_TmpCtrl_Length - 1, &hv_TmpCtrl_ColumnTo);
+				DistancePp(hv_TmpCtrl_RowFrom, hv_TmpCtrl_ColumnFrom, hv_TmpCtrl_RowTo, hv_TmpCtrl_ColumnTo,
+					&hv_Distance_World_Measure_01_0);
+			}
+			//Measure 01: Calibrate positions for Measure 01 [1]
+			ImagePointsToWorldPlane(hv_CameraParameters, hv_CameraPose, hv_Row_Measure_01_1,
+				hv_Column_Measure_01_1, 0.001, &hv_Column_World_Measure_01_1, &hv_Row_World_Measure_01_1);
+			//Measure 01: Calibrate distances
+			hv_TmpCtrl_Length = hv_Row_World_Measure_01_1.TupleLength();
+			if (0 != (hv_TmpCtrl_Length>0))
+			{
+				TupleSelectRange(hv_Row_World_Measure_01_1, 0, hv_TmpCtrl_Length - 2, &hv_TmpCtrl_RowFrom);
+				TupleSelectRange(hv_Column_World_Measure_01_1, 0, hv_TmpCtrl_Length - 2, &hv_TmpCtrl_ColumnFrom);
+				TupleSelectRange(hv_Row_World_Measure_01_1, 1, hv_TmpCtrl_Length - 1, &hv_TmpCtrl_RowTo);
+				TupleSelectRange(hv_Column_World_Measure_01_1, 1, hv_TmpCtrl_Length - 1, &hv_TmpCtrl_ColumnTo);
+				DistancePp(hv_TmpCtrl_RowFrom, hv_TmpCtrl_ColumnFrom, hv_TmpCtrl_RowTo, hv_TmpCtrl_ColumnTo,
+					&hv_Distance_World_Measure_01_1);
+			}
+			//Measure 01: Calibrate positions for Measure 01 [2]
+			ImagePointsToWorldPlane(hv_CameraParameters, hv_CameraPose, hv_Row_Measure_01_2,
+				hv_Column_Measure_01_2, 0.001, &hv_Column_World_Measure_01_2, &hv_Row_World_Measure_01_2);
+			//Measure 01: Calibrate distances
+			hv_TmpCtrl_Length = hv_Row_World_Measure_01_2.TupleLength();
+			if (0 != (hv_TmpCtrl_Length>0))
+			{
+				TupleSelectRange(hv_Row_World_Measure_01_2, 0, hv_TmpCtrl_Length - 2, &hv_TmpCtrl_RowFrom);
+				TupleSelectRange(hv_Column_World_Measure_01_2, 0, hv_TmpCtrl_Length - 2, &hv_TmpCtrl_ColumnFrom);
+				TupleSelectRange(hv_Row_World_Measure_01_2, 1, hv_TmpCtrl_Length - 1, &hv_TmpCtrl_RowTo);
+				TupleSelectRange(hv_Column_World_Measure_01_2, 1, hv_TmpCtrl_Length - 1, &hv_TmpCtrl_ColumnTo);
+				DistancePp(hv_TmpCtrl_RowFrom, hv_TmpCtrl_ColumnFrom, hv_TmpCtrl_RowTo, hv_TmpCtrl_ColumnTo,
+					&hv_Distance_World_Measure_01_2);
+			}
+			//Measure 01: Calibrate positions for Measure 01 [3]
+			ImagePointsToWorldPlane(hv_CameraParameters, hv_CameraPose, hv_Row_Measure_01_3,
+				hv_Column_Measure_01_3, 0.001, &hv_Column_World_Measure_01_3, &hv_Row_World_Measure_01_3);
+			//Measure 01: Calibrate distances
+			hv_TmpCtrl_Length = hv_Row_World_Measure_01_3.TupleLength();
+			if (0 != (hv_TmpCtrl_Length>0))
+			{
+				TupleSelectRange(hv_Row_World_Measure_01_3, 0, hv_TmpCtrl_Length - 2, &hv_TmpCtrl_RowFrom);
+				TupleSelectRange(hv_Column_World_Measure_01_3, 0, hv_TmpCtrl_Length - 2, &hv_TmpCtrl_ColumnFrom);
+				TupleSelectRange(hv_Row_World_Measure_01_3, 1, hv_TmpCtrl_Length - 1, &hv_TmpCtrl_RowTo);
+				TupleSelectRange(hv_Column_World_Measure_01_3, 1, hv_TmpCtrl_Length - 1, &hv_TmpCtrl_ColumnTo);
+				DistancePp(hv_TmpCtrl_RowFrom, hv_TmpCtrl_ColumnFrom, hv_TmpCtrl_RowTo, hv_TmpCtrl_ColumnTo,
+					&hv_Distance_World_Measure_01_3);
+			}
+
+
+			if (hv_Distance_World_Measure_01_0 > 0 &
+				hv_Distance_World_Measure_01_1 > 0 &
+				hv_Distance_World_Measure_01_2 > 0 &
+				hv_Distance_World_Measure_01_3 > 0)
+			{
+				//在静态文本框中显示测量数据
+				CString str0, str1, str2, str3;
+				str0.Format(_T("%.4f"), double(hv_Distance_World_Measure_01_0));
+				str1.Format(_T("%.4f"), double(hv_Distance_World_Measure_01_1));
+				str2.Format(_T("%.4f"), double(hv_Distance_World_Measure_01_2));
+				str3.Format(_T("%.4f"), double(hv_Distance_World_Measure_01_3));
+				pMainWindow->SetDlgItemText(IDC_STATIC2, str0);
+				pMainWindow->SetDlgItemText(IDC_STATIC3, str1);
+				pMainWindow->SetDlgItemText(IDC_STATIC4, str2);
+				pMainWindow->SetDlgItemText(IDC_STATIC5, str3);
+			}
 			Sleep(50);
 		}
 	}
