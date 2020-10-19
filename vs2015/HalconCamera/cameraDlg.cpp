@@ -7,6 +7,9 @@
 #include "cameraDlg.h"
 #include "afxdialogex.h"
 
+#include "halconcpp.h"
+using namespace HalconCpp;
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -64,6 +67,8 @@ BEGIN_MESSAGE_MAP(CcameraDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_BN_CLICKED(IDC_BUTTON1, &CcameraDlg::OnBnClickedButton1)
+	ON_BN_CLICKED(IDC_BUTTON2, &CcameraDlg::OnBnClickedButton2)
 END_MESSAGE_MAP()
 
 
@@ -152,3 +157,73 @@ HCURSOR CcameraDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+
+volatile BOOL m_bRun;
+volatile BOOL m_bShowFlag;
+void CcameraDlg::OnBnClickedButton1()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	CWnd * pWnd = AfxGetApp()->GetMainWnd();
+	if (m_bShowFlag)
+	{
+		m_bRun = TRUE;
+	}
+	else
+	{
+		hThread = CreateThread(NULL,
+			0,
+			(LPTHREAD_START_ROUTINE)ThreadFunc,
+			this, //传入主窗口指针
+			0,
+			&ThreadID);
+	}
+}
+
+void ThreadFunc(LPVOID lpParam)
+{
+	//指针转换
+	CcameraDlg * pMainWindow;
+	pMainWindow = (CcameraDlg *)lpParam; //强制转化为主窗口指针
+	HTuple HWindowID;
+	CRect Rect;
+	CWnd * pWnd = pMainWindow->GetDlgItem(IDC_STATIC);
+	HWindowID = (Hlong)pWnd->m_hWnd;
+	pWnd->GetWindowRect(&Rect);
+
+	//打开窗口，设置宽高
+	OpenWindow(0, 0, Rect.Width(), Rect.Height(), HWindowID, "visible", "", &(pMainWindow->m_HWindowID));
+
+	//显示相机捕捉的图像
+	OpenFramegrabber("GigEVision2", 0, 0, 0, 0, 0, 0, "progressive", -1, "default",
+		-1, "false", "default", "d47c443017eb_OMRONSENTECH_STCMBA503POE", 0, -1, &(pMainWindow->hv_AcqHandle));
+
+	GrabImageStart(pMainWindow->hv_AcqHandle, -1);
+	ClearWindow(pMainWindow->m_HWindowID);
+	GrabImage(&(pMainWindow->ho_Image), pMainWindow->hv_AcqHandle);
+	GetImagePointer1((pMainWindow->ho_Image), NULL, NULL, &(pMainWindow->m_ImageWidth), &(pMainWindow->m_ImageHeight));
+	SetPart(pMainWindow->m_HWindowID, 0, 0, pMainWindow->m_ImageHeight - 1, pMainWindow->m_ImageWidth - 1);
+	m_bShowFlag = TRUE;//设置运行状态
+	m_bRun = TRUE;
+
+	while (m_bShowFlag)
+	{
+		if (m_bRun)
+		{
+			GrabImageAsync(&(pMainWindow->ho_Image), pMainWindow->hv_AcqHandle, -1);
+			DispObj(pMainWindow->ho_Image, pMainWindow->m_HWindowID);
+			Sleep(50);
+		}
+	}
+	ClearWindow(pMainWindow->m_HWindowID);
+	CloseFramegrabber(pMainWindow->hv_AcqHandle);
+	CloseWindow(pMainWindow->m_HWindowID);
+	ExitThread(0);
+}
+
+
+void CcameraDlg::OnBnClickedButton2()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	m_bRun = FALSE;
+	m_bShowFlag = FALSE;
+}
