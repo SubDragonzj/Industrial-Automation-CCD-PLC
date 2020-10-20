@@ -10,6 +10,11 @@
 #include "halconcpp.h"
 using namespace HalconCpp;
 
+#include <fstream>
+#include <iostream>
+#include <io.h>
+using namespace std;
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -425,6 +430,37 @@ void ThreadFunc(LPVOID lpParam)
 				pMainWindow->SetDlgItemText(IDC_STATIC3, str1);
 				pMainWindow->SetDlgItemText(IDC_STATIC4, str2);
 				pMainWindow->SetDlgItemText(IDC_STATIC5, str3);
+
+
+				//运行打包的Python可执行文件run.exe
+				SHELLEXECUTEINFO ShellInfo;
+				memset(&ShellInfo, 0, sizeof(ShellInfo));
+				ShellInfo.cbSize = sizeof(ShellInfo);
+				ShellInfo.hwnd = NULL;
+				ShellInfo.lpVerb = _T("open");
+				ShellInfo.lpFile = _T("run.exe");
+				ShellInfo.nShow = SW_HIDE;  //不显示弹窗
+				ShellInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+				//执行程序run.exe
+				ShellExecuteEx(&ShellInfo);
+				//等待运行完毕
+				WaitForSingleObject(ShellInfo.hProcess, INFINITE);
+				//关闭程序run.exe
+				TerminateProcess(ShellInfo.hProcess, 0);
+				ShellInfo.hProcess = NULL;
+
+
+				if ((_access("status.txt", 0)) != -1)
+				{
+					//将测量数据写入文件distance.txt
+					ofstream OutFile("distance.txt");
+					OutFile << double(hv_Distance_World_Measure_01_0) << endl;
+					OutFile << double(hv_Distance_World_Measure_01_1) << endl;
+					OutFile << double(hv_Distance_World_Measure_01_2) << endl;
+					OutFile << double(hv_Distance_World_Measure_01_3) << endl;
+					OutFile.close();
+					remove("status.txt");
+				}
 			}
 			Sleep(50);
 		}
