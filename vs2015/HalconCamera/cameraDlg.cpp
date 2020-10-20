@@ -13,6 +13,7 @@ using namespace HalconCpp;
 #include <fstream>
 #include <iostream>
 #include <io.h>
+#include "Python.h"
 using namespace std;
 
 #ifdef _DEBUG
@@ -432,35 +433,47 @@ void ThreadFunc(LPVOID lpParam)
 				pMainWindow->SetDlgItemText(IDC_STATIC5, str3);
 
 
-				//运行打包的Python可执行文件run.exe
-				SHELLEXECUTEINFO ShellInfo;
-				memset(&ShellInfo, 0, sizeof(ShellInfo));
-				ShellInfo.cbSize = sizeof(ShellInfo);
-				ShellInfo.hwnd = NULL;
-				ShellInfo.lpVerb = _T("open");
-				ShellInfo.lpFile = _T("run.exe");
-				ShellInfo.nShow = SW_HIDE;  //不显示弹窗
-				ShellInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
-				//执行程序run.exe
-				ShellExecuteEx(&ShellInfo);
-				//等待运行完毕
-				WaitForSingleObject(ShellInfo.hProcess, INFINITE);
-				//关闭程序run.exe
-				TerminateProcess(ShellInfo.hProcess, 0);
-				ShellInfo.hProcess = NULL;
+				//调用Python代码
+				Py_Initialize();
+				PyRun_SimpleString("import sys");
+				PyRun_SimpleString("sys.path.append('./')");
 
+				PyObject* pModule = PyImport_ImportModule("run");
+				PyObject* pFunc1 = PyObject_GetAttrString(pModule, "ReadBool");
+				PyObject* pFunc2 = PyObject_GetAttrString(pModule, "WriteInt32");
+				PyObject* pFunc3 = PyObject_GetAttrString(pModule, "WriteBool");
 
-				if ((_access("status.txt", 0)) != -1)
+				PyObject* pArgs = PyTuple_New(1);
+				PyTuple_SetItem(pArgs, 0, Py_BuildValue("s", "M30.0"));
+				PyObject* pReturn = PyEval_CallObject(pFunc1, pArgs);
+				int nResult;
+				PyArg_Parse(pReturn, "i", &nResult);
+				if (nResult == 1)
 				{
-					//将测量数据写入文件distance.txt
-					ofstream OutFile("distance.txt");
-					OutFile << double(hv_Distance_World_Measure_01_0) << endl;
-					OutFile << double(hv_Distance_World_Measure_01_1) << endl;
-					OutFile << double(hv_Distance_World_Measure_01_2) << endl;
-					OutFile << double(hv_Distance_World_Measure_01_3) << endl;
-					OutFile.close();
-					remove("status.txt");
+					int pause1, pause2;
+					double distance0 = double(hv_Distance_World_Measure_01_0);
+					double distance1 = double(hv_Distance_World_Measure_01_1);
+					double distance2 = double(hv_Distance_World_Measure_01_2);
+					double distance3 = double(hv_Distance_World_Measure_01_3);
+
+					pause1 = (int)(((distance0 - distance1) / 2) * 1000);
+					pause2 = (int)(((distance2 - distance3) / 2) * 1000);
+
+					PyObject* pArgs1 = PyTuple_New(2);
+					PyObject* pArgs2 = PyTuple_New(2);
+					PyTuple_SetItem(pArgs1, 0, Py_BuildValue("s", "V510"));
+					PyTuple_SetItem(pArgs1, 1, Py_BuildValue("i", pause1));
+					PyTuple_SetItem(pArgs2, 0, Py_BuildValue("s", "V520"));
+					PyTuple_SetItem(pArgs2, 1, Py_BuildValue("i", pause2));
+					PyEval_CallObject(pFunc2, pArgs1);
+					PyEval_CallObject(pFunc2, pArgs2);
+
+					PyObject* pArgs3 = PyTuple_New(2);
+					PyTuple_SetItem(pArgs3, 0, Py_BuildValue("s", "M30.0"));
+					PyTuple_SetItem(pArgs3, 1, Py_BuildValue("i", 0));
+					PyEval_CallObject(pFunc3, pArgs3);
 				}
+				Py_Finalize();
 			}
 			Sleep(50);
 		}
