@@ -1,4 +1,3 @@
-
 // RM32PTDlg.cpp : 实现文件
 //
 
@@ -6,6 +5,11 @@
 #include "RM32PT.h"
 #include "RM32PTDlg.h"
 #include "afxdialogex.h"
+
+#include "PCI_DMC.h"
+#include "PCI_DMC_Err.h"
+
+#include <iostream>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -64,6 +68,10 @@ BEGIN_MESSAGE_MAP(CRM32PTDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_BN_CLICKED(IDC_BUTTON1, &CRM32PTDlg::OnBnClickedButton1)
+	ON_BN_CLICKED(IDC_CHECK1, &CRM32PTDlg::OnBnClickedCheck1)
+	ON_BN_CLICKED(IDC_BUTTON2, &CRM32PTDlg::OnBnClickedButton2)
+	ON_BN_CLICKED(IDC_BUTTON3, &CRM32PTDlg::OnBnClickedButton3)
 END_MESSAGE_MAP()
 
 
@@ -152,3 +160,128 @@ HCURSOR CRM32PTDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+
+
+/* PCI-DMC */
+const unsigned short cstMaxCardNum = 16;
+/*Global*/
+I16 gDMCExistCards = 0;
+U16 gDMCCardNo, gpDMCCardNoList[cstMaxCardNum] = { 0 };
+U16 gpDeviceInfo[cstMaxCardNum], gpNodeID[32] = { 0 }, gNodeNum;
+U16 SlotID;
+U32 gpSlaveTable[cstMaxCardNum][4];
+U16 PortNoX = 0, PortNoY = 1;
+
+void CRM32PTDlg::OnBnClickedButton1()//初始化按钮
+{
+	// TODO: 在此添加控件通知处理程序代码
+
+	/* gDMCExistCards 变数会被填入 PC 上 PCI-DMC-01 的数量*/
+	_DMC_01_open(&gDMCExistCards);
+
+	unsigned short i, CardNo;
+	for (i = 0; i<gDMCExistCards; i++)
+	{
+		/* 取得 PC 上第 i 张适配卡号，卡号即 Switch 指拨开关对应的数值*/
+		_DMC_01_get_CardNo_seq(i, &CardNo);
+		gpDMCCardNoList[i] = CardNo;
+		gDMCCardNo = CardNo;
+
+		_DMC_01_pci_initial(gDMCCardNo); // 初始化适配卡
+		_DMC_01_initial_bus(gDMCCardNo); // 通讯协议初始化
+
+		/*显示 Card No */
+		SetDlgItemInt(IDC_STATIC2, CardNo);
+	}
+}
+
+
+void CRM32PTDlg::OnBnClickedButton2()//搜索卡按钮
+{
+	// TODO: 在此添加控件通知处理程序代码
+
+	unsigned int i = 0, lMask = 0x1;
+
+	_DMC_01_start_ring(gDMCCardNo, 0);
+	SlotID = _DMC_01_get_device_table(gDMCCardNo, &gpDeviceInfo[gDMCCardNo]);
+	_DMC_01_get_node_table(gDMCCardNo, &gpSlaveTable[gDMCCardNo][0]);
+
+	gNodeNum = 0;
+	for (i = 0; i<32; i++)
+	{
+		if ((gpSlaveTable[gDMCCardNo][0] >> i) & lMask)
+		{
+			gpNodeID[gNodeNum] = (unsigned short)(i + 1);
+			gNodeNum++;
+		}
+	}
+	/*显示 Node ID */
+	SetDlgItemInt(IDC_STATIC3, gNodeNum);
+	/*显示 Slot ID */
+	SetDlgItemInt(IDC_STATIC4, SlotID);
+}
+
+
+void CRM32PTDlg::OnBnClickedButton3()//断开按钮
+{
+	// TODO: 在此添加控件通知处理程序代码
+	
+	unsigned short i;
+
+	for (i = 0; i<gDMCExistCards; i++) {
+		_DMC_01_reset_card(gpDMCCardNoList[i]);
+	}
+	_DMC_01_close();
+
+	CString str;
+	str = "";
+	SetDlgItemText(IDC_STATIC2, str);
+	SetDlgItemText(IDC_STATIC3, str);
+	SetDlgItemText(IDC_STATIC4, str);
+}
+
+
+BOOL m_bRun;
+DWORD WINAPI ThreadFunc(PVOID pParam)
+{
+	m_bRun = TRUE;
+	while (m_bRun)
+	{
+		U16 rt;
+		U16 input_value[8] = { 0 };
+
+		_DMC_01_get_rm_input_value(gDMCCardNo, gNodeNum, SlotID, PortNoX, &input_value[0]);
+		rt = input_value[0];
+
+		if (rt == 7) //左右启动
+		{
+			_DMC_01_set_rm_output_active(gDMCCardNo, gNodeNum, SlotID, 1);
+			_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 1);
+		}
+		if (rt == 0) //急停
+		{
+			_DMC_01_set_rm_output_active(gDMCCardNo, gNodeNum, SlotID, 1);
+			_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 0);
+		}
+	}
+	ExitThread(0);
+}
+
+
+void CRM32PTDlg::OnBnClickedCheck1()//启动按钮
+{
+	// TODO: 在此添加控件通知处理程序代码
+
+	int state = ((CButton *)GetDlgItem(IDC_CHECK1))->GetCheck(); //获取check按钮状态
+
+	if (state == 1)
+	{
+		CreateThread(NULL, 0, ThreadFunc, NULL, 0, NULL);
+	}
+	if (state == 0)
+	{
+		m_bRun = FALSE;
+		_DMC_01_set_rm_output_active(gDMCCardNo, gNodeNum, SlotID, 1);
+		_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 0);
+	}
+}
