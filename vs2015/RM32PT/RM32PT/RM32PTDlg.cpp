@@ -10,6 +10,7 @@
 #include "PCI_DMC_Err.h"
 
 #include <iostream>
+using namespace std;
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -241,46 +242,7 @@ void CRM32PTDlg::OnBnClickedButton3()//断开按钮
 }
 
 
-BOOL m_bRun, m_bRun2;
-DWORD WINAPI ThreadFunc2(PVOID pParam)
-{
-	m_bRun2 = TRUE;
-	while (m_bRun2)
-	{
-		U16 rt;
-		U16 input_value[8] = { 0 };
-
-		_DMC_01_get_rm_input_value(gDMCCardNo, gNodeNum, SlotID, PortNoX, &input_value[0]);
-		rt = input_value[0];
-			/*
-			_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 6);//Y1，Y2
-			_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 14);//Y1，Y2, Y3
-			_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 30);//Y1，Y2, Y3, Y4
-			_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 62);//Y1，Y2, Y3, Y4, Y5
-			_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 126);//Y1，Y2, Y3, Y4, Y5, Y6
-			_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 254);//Y1，Y2, Y3, Y4, Y5, Y6, Y7
-			*/
-		int value = 6;
-		int num = 1;
-		for (int i = 0; i < 6; i++)
-		{
-			if (rt == 9) //计时完成
-			{
-				_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, value);
-				Sleep(300);
-				value = value + (8 * num);
-				num = num * 2;
-				if (i == 5)
-				{
-					_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 0);
-					m_bRun2 = FALSE;
-				}
-			}
-		}
-	}
-	return 0;
-}
-
+BOOL m_bRun;
 DWORD WINAPI ThreadFunc(PVOID pParam)
 {
 	m_bRun = TRUE;
@@ -292,16 +254,51 @@ DWORD WINAPI ThreadFunc(PVOID pParam)
 		_DMC_01_get_rm_input_value(gDMCCardNo, gNodeNum, SlotID, PortNoX, &input_value[0]);
 		rt = input_value[0];
 
-		if ((rt == 0) | (rt == 8)) //急停
+		if (rt == 0) //急停
 		{
 			_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 0);
-			m_bRun2 = FALSE;
 		}
-
 		if (rt == 7) //左右启动
 		{
-			CreateThread(NULL, 0, ThreadFunc2, NULL, 0, NULL);
 			_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 2);//Y1，计时开始
+
+		}
+		if (rt == 9) //计时完成
+		{
+			int value = 6;
+			int num = 1;
+			for (int i = 0; i < 6; i++)
+			{
+				U16 rt1;
+				U16 input_value1[8] = { 0 };
+				_DMC_01_get_rm_input_value(gDMCCardNo, gNodeNum, SlotID, PortNoX, &input_value1[0]);
+				rt1 = input_value1[0];
+
+				if (rt1 == 8) //急停
+				{
+					_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 0);
+					break;
+				}
+
+				/*
+				_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 6);//Y1，Y2
+				_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 14);//Y1，Y2, Y3
+				_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 30);//Y1，Y2, Y3, Y4
+				_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 62);//Y1，Y2, Y3, Y4, Y5
+				_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 126);//Y1，Y2, Y3, Y4, Y5, Y6
+				_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 254);//Y1，Y2, Y3, Y4, Y5, Y6, Y7
+				*/
+				_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, value);
+				Sleep(300);
+				value = value + (8 * num);
+				num = num * 2;
+
+				if (i == 5)
+				{
+					_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 0);
+					Sleep(50);
+				}
+			}
 		}
 	}
 	return 0;
@@ -321,7 +318,6 @@ void CRM32PTDlg::OnBnClickedCheck1()//启动按钮
 	if (state == 0)
 	{
 		m_bRun = FALSE;
-		m_bRun2 = FALSE;
 		_DMC_01_set_rm_output_active(gDMCCardNo, gNodeNum, SlotID, 1);
 		_DMC_01_set_rm_output_value(gDMCCardNo, gNodeNum, SlotID, PortNoY, 0);
 	}
