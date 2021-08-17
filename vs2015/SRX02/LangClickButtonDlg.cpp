@@ -215,6 +215,17 @@ BOOL CLangClickButtonDlg::PreTranslateMessage(MSG * pMsg)
 				PyTuple_SetItem(pArgs1, 0, Py_BuildValue("s", "V100.0")); //YÖá+
 				PyTuple_SetItem(pArgs1, 1, Py_BuildValue("i", 1));
 				PyEval_CallObject(pFunc1, pArgs1);
+				
+				/*
+				Py_Initialize();
+
+				PyRun_SimpleString("import sys");
+				PyRun_SimpleString("sys.path.append('./')");
+
+				PyRun_SimpleString("import run");
+				PyRun_SimpleString("run.WriteBool('V100.0', 1)");
+				Py_Finalize();
+				*/
 			}
 			if (pMsg->hwnd == GetDlgItem(IDC_BUTTON2)->m_hWnd)
 			{
